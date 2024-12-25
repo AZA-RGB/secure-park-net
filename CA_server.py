@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify,Response
 from crypto_utils import load_private_key,load_cert, issue_certificate
 from cryptography.x509 import load_pem_x509_csr
-from cryptography.hazmat.primitives.serialization import Encoding
+from cryptography.hazmat.primitives import serialization
 
 import os
 
@@ -40,6 +40,18 @@ def sign_csr():
 
     except Exception as e:
         return jsonify({"error": "Failed to process CSR", "details": str(e)}), 500
+
+
+@app.route('/get-ca-certificate', methods=['get'])
+def get_ca_certificate():
+    ca_cert_data=ca_cert.public_bytes(serialization.Encoding.PEM)
+    return Response(
+            ca_cert_data,
+            mimetype='application/x-pem-file',
+            headers={
+                'Content-Disposition': 'attachment; filename="CA_Certificate.pem"'
+            }
+        )
 
 
 if __name__ == '__main__':

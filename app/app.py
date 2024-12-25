@@ -32,6 +32,21 @@ def create_app():
         from models.user_model import User
         db.create_all() 
     return app
+def get_ca_cert():
+    """
+    return:  x509 certificate object
+    """
+    try:
+        response = requests.get('http://localhost:5001/get-ca-certificate')
+        response.raise_for_status()
+        ca_certificate_pem = response.content
+        print(ca_certificate_pem)
+        return load_pem_x509_certificate(ca_certificate_pem, default_backend())
+    except requests.exceptions.RequestException as e:
+        print(f"Error retrieving ca certificate: {e}")
+    except ValueError as e:
+        print(f"Error loading ca certificate: {e}")
+    return None
 
 if __name__== "__main__":
     app=create_app()
