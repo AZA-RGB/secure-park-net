@@ -1,9 +1,13 @@
+import os
+import sys
+
+
 from flask import Flask, request, jsonify,Response
-from crypto_utils import load_private_key,load_cert, issue_certificate
 from cryptography.x509 import load_pem_x509_csr
 from cryptography.hazmat.primitives import serialization
+sys.path.append(os.path.abspath('/home/elyas/Music/IdeaProjects/ParkSecureNet/project/uls'))
 
-import os
+from crypto_utils import load_private_key,load_cert, issue_certificate
 
 app = Flask(__name__)
 
@@ -33,7 +37,7 @@ def sign_csr():
         # print(csr)
         client_cert=issue_certificate(csr,ca_private_key=ca_private_key,ca_cert=ca_cert,validity_days=3650)
         
-        pem_cert=client_cert.public_bytes(encoding=Encoding.PEM)
+        pem_cert=client_cert.public_bytes(encoding=serialization.Encoding.PEM)
         
         response = Response(pem_cert, mimetype="application/x-pem-file")
         return response

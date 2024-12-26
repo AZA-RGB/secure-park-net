@@ -9,13 +9,6 @@ def generate_private_key(key_out_path, key_size=2048):
     print(f"Private key saved to {key_out_path}")
 
 
-def generate_csr_from_key(key_file_path, csr_out_path, country, state, locality, organization, common_name):
-    # OpenSSL command to generate a CSR
-    openssl_command = f"openssl req -new -key {key_file_path} -out {csr_out_path} -subj \"/C={country}/ST={state}/L={locality}/O={organization}/CN={common_name}\""
-    
-    # Run the command
-    subprocess.run(openssl_command, check=True, shell=True)
-    print(f"CSR saved to {csr_out_path}")
 
 
 
@@ -53,18 +46,18 @@ def send_client_cert(client_cert_path):
 
 
 # # CSR generation test
-# key_file_path = 'private_key_using_command.pem'
-# country = "US"
-# state = "California"
-# locality = "San Francisco"
-# organization = "Your Organization"
-# common_name = "yourdomain.com"
-# csr_out_path="csr_test.csr"
-# csr = generate_csr_from_pem(key_file_path,csr_out_path, country, state, locality, organization, common_name)
-# print(csr)
+key_file_path = '../server/server_private_key.pem'
+country = "SY"
+state = "Damascus"
+locality = "Sahnaya"
+organization = "parking org"
+common_name = "parking server"
+csr_out_path="../server/server_CSR.csr"
+csr = generate_csr_from_key(key_file_path,csr_out_path, country, state, locality, organization, common_name)
+print(csr)
 
 # # private key generation test
-# private_key = generate_private_key(key_out_path="private_key_using_command.pem")
+# private_key = generate_private_key(key_out_path="client/client_private_key.pem")
 
 
 
@@ -80,7 +73,5 @@ def send_client_cert(client_cert_path):
 # ca_cert_path='CA_self_signed_certificate.crt'
 # cert_path='certificate_test.crt'
 # verify_certificate(ca_cert_path, cert_path)
-
-
 
 

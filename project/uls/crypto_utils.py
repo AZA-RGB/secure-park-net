@@ -11,7 +11,7 @@ from Crypto.Random import get_random_bytes
 import hashlib
 import base64
 import requests
-import json
+import json,subprocess
 from datetime import datetime, timedelta
 def issue_certificate(csr, ca_private_key, ca_cert, validity_days=365):
     """
@@ -48,6 +48,13 @@ def issue_certificate(csr, ca_private_key, ca_cert, validity_days=365):
     certificate = builder.sign(private_key=ca_private_key, algorithm=hashes.SHA256())
     return certificate
 
+def generate_csr_from_key(key_file_path, csr_out_path, country, state, locality, organization, common_name):
+    # OpenSSL command to generate a CSR
+    openssl_command = f"openssl req -new -key {key_file_path} -out {csr_out_path} -subj \"/C={country}/ST={state}/L={locality}/O={organization}/CN={common_name}\""
+    
+    # Run the command
+    subprocess.run(openssl_command, check=True, shell=True)
+    print(f"CSR saved to {csr_out_path}")
 
 
 
@@ -67,19 +74,18 @@ def load_cert(certificate_path):
         cert_data = cert_file.read()
     return x509.load_pem_x509_certificate(cert_data, default_backend())
 
-    def verify_certificate(ca_cert,cert_to_verify,CN):
-        try:
-            ca_cert.public_key().verify(
-                cert_to_verify.signature,
-                cert_to_verify.tbs_certificate_bytes,
-                padding.PKCS1v15(),
-                cert_to_verify.signature_hash_algorithm
-            )
-            # print("The certificate is valid and signed by the CA.")
-            return cert_to_verify.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value==CN
-        except Exception as e:
-            print(f"Verification failed: {e}")
-            return False
+def verify_certificate(ca_cert,cert_to_verify,CN):
+    try:
+        ca_cert.public_key().verify(
+            cert_to_verify.signature,
+            cert_to_verify.tbs_certificate_bytes,
+            padding.PKCS1v15(),
+            cert_to_verify.signature_hash_algorithm
+        )
+        return cert_to_verify.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value==CN
+    except Exception as e:
+        print(f"Verification failed: {e}")
+        return False
 
 def load_private_key(key_file_path):
     with open(key_file_path, "rb") as key_file:
