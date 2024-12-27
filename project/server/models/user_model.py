@@ -11,4 +11,6 @@ class User(db.Model):
     name = db.Column(db.String(100))
     role = db.Column(db.String(100))
     password = db.Column(db.String(200))
+    pubkey=db.Column(db.text,nullable=True)
+    api_token=db.Column(db.String(100),nullable=True)
     logs = db.relationship('Log', back_populates='user')
