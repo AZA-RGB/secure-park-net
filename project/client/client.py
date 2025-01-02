@@ -9,6 +9,10 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import Encoding
 
 
+api_token=''
+
+
+
 def get_cert_from_csr(csr_file_path,CA_issue_url):
     # Send the CSR to the server
     with open(csr_file_path, 'rb') as csr:
@@ -65,14 +69,47 @@ def get_server_cert():
 # upload client certificate to the parking server
 def send_client_cert(client_cert):
     try:
+        headers={'Authorization':api_token}
         files = {'certificate': ('clientCertificate.crt', client_cert.public_bytes(Encoding.PEM), 'application/x-pem-file')}
-        response = requests.post('http://127.0.0.1:3000/upload_certificate', files=files)
+        response = requests.post('http://127.0.0.1:3000/upload_certificate', files=files,headers=headers)
         print(response.json())
         response.raise_for_status()  # Raise an error for HTTP status codes 4xx or 5xx
         return True
     except requests.exceptions.RequestException as e:
         print(f"Error sending client's certificate: {e}")
         return False
+
+
+def register(name,password,car_id,phone_number):
+    request_data = {
+        'car_id':car_id,
+        'phone_number':phone_number ,
+        'username':name,
+        'password':password
+    }
+
+    response =requests.post("http://127.0.0.1:3000/register",json=request_data)
+
+    print(response.json())
+
+
+def login(username,password):
+    global api_token
+    request_data = {
+        "username": username,
+        "password": password,
+        
+    }
+
+    response =requests.post("http://127.0.0.1:3000/login",json=request_data)
+    if(response.ok):
+        print(response.json()['message'])
+        api_token=response.json()['api_token']
+        # pubkexhange
+    
+    return True
+
+
 
 
 # # gettign cetrificate from a CA 
@@ -91,10 +128,15 @@ def send_client_cert(client_cert):
 # ca_cert=get_ca_cert()
 # get_cert_from_csr('client_CSR.csr','http://localhost:5001/sign_csr')
 
-client_cert=load_cert('my_certificate.pem')
-send_client_cert(client_cert)
+
+
 # server_cert=get_server_cert()
 # ca_cert=get_ca_cert()
 # print(verify_certificate(ca_cert,server_cert,'parking server'))
 
 
+# register('wwwwwww','qwertyu',552551,'0950501812')
+
+login('wwwwwww','qwertyu')
+client_cert=load_cert('my_certificate.pem')
+send_client_cert(client_cert)

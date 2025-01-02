@@ -13,6 +13,17 @@ import base64
 import requests
 import json,subprocess
 from datetime import datetime, timedelta
+
+
+def generate_private_key(key_out_path, key_size=2048):
+    # OpenSSL command to generate an RSA private key
+    openssl_command = f"openssl genpkey -algorithm RSA -out {key_out_path} -pkeyopt rsa_keygen_bits:{key_size}"
+    
+    # Run the command
+    subprocess.run(openssl_command, check=True, shell=True)
+    print(f"Private key saved to {key_out_path}")
+
+
 def issue_certificate(csr, ca_private_key, ca_cert, validity_days=365):
     """
     Issue a certificate using a CSR as a Certificate Authority (CA).

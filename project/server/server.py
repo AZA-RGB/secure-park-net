@@ -1,7 +1,7 @@
-import sys ,os
+import sys ,os,time,secrets
 sys.path.append(os.path.abspath('/home/elyas/Music/IdeaProjects/ParkSecureNet/project/uls'))
 
-from crypto_utils import load_cert,generate_csr_from_key,verify_certificate
+from crypto_utils import load_cert,generate_csr_from_key,verify_certificate,serialization
 from cryptography.x509 import load_pem_x509_csr,load_pem_x509_certificate,NameOID
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import Encoding
@@ -9,9 +9,11 @@ from flask import Flask,Response,request,jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 import requests
+from models import User, Log
+from db import db
+from hashlib import sha256
 
 
-db = SQLAlchemy()
 migrate = Migrate()
 
 def create_app():
@@ -19,24 +21,16 @@ def create_app():
 
     # Replace these values with your actual MySQL credentials
     USERNAME = 'root'
-    PASSWORD = 'yourpassword'
     HOST = 'localhost'
     DATABASE = 'park_secure_net' 
 
     # SQLAlchemy database URI
     app.config['SQLALCHEMY_DATABASE_URI'] = f'mysql+pymysql://root@{HOST}/{DATABASE}'
     db.init_app(app)
-    migrate.init_app(app, db)
+    migrate = Migrate(app, db)
 
 
     with app.app_context():
-        try:
-            db.engine.connect()
-            print("Database connection successful.")
-        except Exception as e:
-            print(f"Database connection failed: {e}")
-        from models.log_model import Log
-        from models.user_model import User
         db.create_all() 
 
 
@@ -72,15 +66,23 @@ def create_app():
             return jsonify({"error": "No certificate file provided"}), 400
         
         certificate_file = request.files['certificate']
-        
+        api_token = request.headers['Authorization']
+       
         # Read the contents of the certificate file
         certificate_data = certificate_file.read()
         client_certificate=load_pem_x509_certificate(certificate_data, default_backend())
-        
         # now you have the certificate verify the certifiacate then store its public key with the hash 
         if( verify_certificate(ca_cert,client_certificate,CN="parking client")):
             print("from upload certificate")
+            print(type(client_certificate))
+
             print(client_certificate.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value)
+            user=User.query.filter_by(api_token=api_token).first()
+            user.pubkey=client_certificate.public_key().public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo
+            )
+            db.session.commit()
             # # store the (PubKeyhash, pubKey)
             # store_pubKey(client_certificate)
             return jsonify({
@@ -93,6 +95,41 @@ def create_app():
             "certificate": "certificat not valid" # Return the certificate as a string for demonstration
         }),401
 
+
+
+
+    @app.route('/login',methods=["POST"])
+    def login():
+        username=request.json.get('username')
+        password=request.json.get('password')
+        user = User.query.filter_by(name=username).first()
+        if user and user.password == sha256(password.encode()).hexdigest():
+            api_token=gen_api_token(user.id)
+            user.api_token=api_token
+            db.session.commit()
+            return jsonify({'message':'logged in succefully','api_token':api_token}), 200
+        else:
+            return jsonify({'message': 'Invalid credentials'}), 401
+
+
+
+
+    @app.route('/register',methods=["POST"])
+    def register():
+        username=request.json.get('username')
+        password=request.json.get('password')
+        car_id=request.json.get('car_id')
+        phone_number=request.json.get('phone_number')
+
+        new_user = User(name=username, password=sha256(password.encode()).hexdigest(),car_id=car_id,phone_number=phone_number,role="guest")
+        db.session.add(new_user)
+        db.session.commit()
+
+        return jsonify({'message': 'User registered successfully'}), 201
+
+
+
+        
 
 
 
@@ -137,6 +174,14 @@ def get_ca_cert():
     except ValueError as e:
         print(f"Error loading ca certificate: {e}")
     return None
+
+def gen_api_token(user_id):
+    timestamp = str(int(time.time()))  # Current timestamp in seconds
+    random_secret = secrets.token_hex(16)  # 32-character random hex string
+    token_data = f"{user_id}:{timestamp}:{random_secret}"
+    # Hash the token data using SHA-256
+    token_hash = sha256(token_data.encode()).hexdigest()
+    return f"{token_hash}"
 
 if __name__== "__main__":
     app=create_app()
